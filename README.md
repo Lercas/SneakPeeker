@@ -23,6 +23,11 @@ cd SneakPeeker
 go build -o sneakpeeker main.go
 ```
 
+Or you can install:
+```bash
+go install github.com/Lercas/SneakPeeker@v1.0.0
+``` 
+
 ## Usage
 
 ```bash
