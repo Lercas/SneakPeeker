@@ -1,14 +1,17 @@
-FROM golang:1.21.5-alpine AS builder
+FROM golang:1.23-alpine AS builder
+
 WORKDIR /app
-COPY go.mod ./
 
-RUN go mod download
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
 COPY . .
-RUN CGO_ENABLED=0 go build -o sneakpeeker .
 
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o sneakpeeker .
 
-FROM gcr.io/distroless/static-debian11
+FROM alpine:3.20
+
 WORKDIR /root/
-COPY --from=builder /app/sneakpeeker .
+COPY --from=builder /app/sneakpeeker /usr/local/bin/sneakpeeker
 
-ENTRYPOINT ["./sneakpeeker"]
+ENTRYPOINT ["sneakpeeker"]

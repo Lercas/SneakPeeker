@@ -1,105 +1,163 @@
 # SneakPeeker
 
-SneakPeeker is a tool designed to detect suspicious URLs in various file formats. It processes ZIP, DOCX, XLSX, PPTX, and PDF files to uncover hidden links that might indicate unauthorized access or data leaks.
+SneakPeeker is a versatile tool designed to detect and optionally remove suspicious URLs (such as canary tokens) from various file formats. In addition to its original capabilities, it now supports more formats, provides detailed reports, can run in dry-run mode, and leverages parallel processing for faster scanning.
 
-## Features
+# Key Features
+- Multi-format Scanning: Supports scanning of `.pdf`, `.zip`, `.docx`, `.xlsx`, `.pptx`, `.txt` and `.html` files for suspicious URLs.
+- Detailed JSON Reports:
+- Includes file path, file size, processing time, whether the file is suspicious, and the URLs found.
+- Provides a summary with total files scanned, number of suspicious files, and number of normal files.
+- URL Removal and Backups:
+- Optionally remove suspicious URLs from files.
+- Creates a backup of the original file before modifications for safety.
+- Dry-Run Mode:
+- Analyze files without making any changes, useful for previewing results before final action.
+- Parallel Processing:
+- Scan multiple files concurrently for faster results.
+- Configure the number of worker goroutines to improve performance on large directories.
+- Verbose Logging:
+- Verbose (`-v`) mode for more detailed output, useful for debugging or tracking the scanning process.
+- Custom Ignored Domains:
+- Specify domains to ignore during URL scanning via the `--ignore` option.
 
-- Scans directories and files for suspicious URLs
-- Supports ZIP, DOCX, XLSX, PPTX, and PDF file formats
-- Outputs found URLs to the console
-- Optionally removes canary tokens from files
-- Generates a JSON report file
-
-## Installation
-
-1. Clone the repository:
+Installation
+1.	Clone the repository:
 ```bash
 git clone https://github.com/Lercas/SneakPeeker.git
 cd SneakPeeker
 ```
 
-2. Build the tool:
+2.	Build the tool:
 ```bash
 go build -o sneakpeeker main.go
 ```
 
-Or you can install:
+Or install directly:
 ```bash
-go install github.com/Lercas/SneakPeeker@v1.0.1
-``` 
-
-## Usage
-
-```bash
-./sneakpeeker [-f] [-r report_file] FILE_OR_DIRECTORY_PATH
+go install github.com/Lercas/SneakPeeker@v2.0.0
 ```
 
-### Parameters
+# Usage
 
-`-f`: (Optional) Remove canary tokens from files.
-`-r report_file`: (Optional) Specify the name of the JSON report file. Default is report.json.
-`FILE_OR_DIRECTORY_PATH`: Path to the file or directory you want to scan.
+```bash
+./sneakpeeker [options] FILE_OR_DIRECTORY_PATH
+```
+
+## Options
+
+- `-f` – Remove suspicious URLs (e.g., canary tokens) from files.
+- `-r report_file` – Specify the name of the JSON report file. Default is report.json.
+- `-v` – Enable verbose (debug-level) logging.
+- `--dry-run` – Perform the scan without modifying any files.
+- `--ignore domains` – Comma-separated list of domains to ignore during scanning.
+- `-w workers` – Number of worker goroutines to use for parallel file scanning. Default is 5.
 
 ## Examples
 
-Scan a directory and output results to the console:
-
+Scan a directory and output results:
 ```bash
-./sneakpeeker /path/to/directory
+
 ```
 
-Scan a file and output results to the console:
-
+Scan a file and output results:
 ```bash
-./sneakpeeker /path/to/file.docx
+
 ```
 
-Scan a file and remove canary tokens:
-
+Scan a PDF and remove canary tokens:
 ```bash
-./sneakpeeker -f /path/to/file.pdf
+
 ```
 
-Scan a file and generate a JSON report:
-
+Scan a file in dry-run mode (no modifications):
 ```bash
-./sneakpeeker -r myreport.json /path/to/file.pdf
+
 ```
 
-How It Works
-
-- PDF Files: Scans for URL patterns in decompressed PDF streams.
-- ZIP, DOCX, XLSX, PPTX Files: Decompresses the files and scans for URL patterns in the extracted contents.
-
-Example Output
-
+Scan with a custom JSON report name:
 ```bash
+
+```
+
+Scan with a custom JSON report name:
+```bash
+
+```
+
+Use multiple workers for faster scanning:
+```bash
+
+```
+
+# How It Works
+
+- PDF Files: Extracts and decompresses PDF streams to search for URL patterns.
+- ZIP/DOCX/XLSX/PPTX Files: Decompresses and inspects the content files inside for URLs.
+- TXT/HTML Files: Directly scans the text content for URLs.
+
+If suspicious URLs are found and the `-f` option is enabled (and not in `--dry-run mode`), they are removed from the file after creating a backup (.bak).
+
+## Example Output
+
+```plaintext
 [INFO] The file /path/to/file.docx is suspicious. URLs found:
-http://suspicious-example.local
-https://another-suspicious-example.local
+http://test-example.local
+https://another-test-example.local
 
-[INFO] The file /path/to/anotherfile.pdf seems normal.
+[DEBUG] The file /path/to/normalfile.txt seems normal.
 ```
 
-## Docker Usage
+### Generated JSON report example:
 
-First, build the Docker image:
-
-```bash
-docker build -t canarycatcher:1.0 .
+```json
+{
+  "reports": [
+    {
+      "file_path": "/path/to/file.docx",
+      "suspicious": true,
+      "found_urls": ["http://test-example.local", "https://another-test-example.local"],
+      "file_size": 2048,
+      "processed_at": "2024-12-20T15:04:05Z"
+    },
+    {
+      "file_path": "/path/to/normalfile.txt",
+      "suspicious": false,
+      "found_urls": [],
+      "file_size": 512,
+      "processed_at": "2024-12-20T15:04:10Z"
+    }
+  ],
+  "summary": {
+    "total_files": 2,
+    "suspicious_files": 1,
+    "normal_files": 1
+  }
+}
 ```
 
-Then, run the container with volume mounting to access your files. For example, if you want to scan the /path/to/scan directory on your host, you can run:
+# Docker Usage
+
+Build the Docker image:
 ```bash
-docker run --rm -v /path/to/scan:/data canarycatcher:1.0 /data
+docker build -t sneakpeeker:latest .
 ```
 
-If you want to use additional flags -f to remove canary tokens, you can do so as follows:
+Scan a directory mounted into /data:
 ```bash
-docker run --rm -v /path/to/scan:/data canarycatcher:1.0 -f /data
+docker run --rm -v /path/to/scan:/data sneakpeeker:latest /data
 ```
 
-Example command to run with a JSON report:
+Use -f to remove suspicious URLs:
 ```bash
-docker run --rm -v /path/to/scan:/data canarycatcher:1.0 -r /data/report.json /data
+docker run --rm -v /path/to/scan:/data sneakpeeker:latest -f /data
+```
+
+Generate a JSON report:
+```bash
+docker run --rm -v /path/to/scan:/data sneakpeeker:latest -r /data/report.json /data
+```
+
+Add verbose logging and dry-run mode:
+```bash
+docker run --rm -v /path/to/scan:/data sneakpeeker:latest -v --dry-run /data
 ```
